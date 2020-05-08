@@ -1,0 +1,49 @@
+# this test will just run terraform without salt
+
+name: terraform end-to-end tests
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  pull_request:
+    branches: [ master, develop ]
+    #    paths:
+     # build only for PR modifying libvirt and salt folders
+     #    - 'libvirt/**'
+     # - 'salt/**'
+     # - 'pillar_examples/**'
+
+jobs:
+  # This workflow contains a single job called "build"
+  terraform-deploy-netweaver-hana:
+    # The type of runner that the job will run on
+    runs-on: self-hosted
+    env:
+      KVM_SERVER: ${{ secrets.KVM_SERVER }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: terraform apply netweaver and hana
+      run: |
+        # add env var to file
+        cp .github/hana-netweaver-tf-only.tfvars libvirt/terraform.tfvars
+        cd libvirt
+        export qemu_uri="$KVM_SERVER"
+        terraform workspace new gh-terraform1
+        terraform workspace select gh-terraform1
+        terraform init
+        terraform apply -auto-approve
+
+
+    - name: terraform destroy
+      if: ${{ always() }}
+      run: |
+        cp .github/hana-netweaver-tf-only.tfvars libvirt/terraform.tfvars
+        cd libvirt
+        export qemu_uri="$KVM_SERVER"
+        terraform workspace select gh-terraform1
+        terraform init
+        terraform destroy -auto-approve
